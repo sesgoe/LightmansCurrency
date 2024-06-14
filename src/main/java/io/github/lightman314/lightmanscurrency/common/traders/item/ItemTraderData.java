@@ -5,6 +5,8 @@ import java.util.List;
 
 import com.google.gson.JsonSyntaxException;
 import io.github.lightman314.lightmanscurrency.LCText;
+import com.mojang.datafixers.util.Pair;
+import io.github.lightman314.lightmanscurrency.api.misc.EasyText;
 import io.github.lightman314.lightmanscurrency.api.money.value.MoneyValue;
 import io.github.lightman314.lightmanscurrency.api.stats.StatKeys;
 import io.github.lightman314.lightmanscurrency.api.traders.TraderType;
@@ -757,21 +759,39 @@ public class ItemTraderData extends InputTraderData implements ITraderItemFilter
 		return ForgeCapabilities.ITEM_HANDLER.orEmpty(cap, LazyOptional.of(() -> this.getItemHandler(relativeSide)));
 	}
 
-	@Override
-	protected void appendTerminalInfo(@Nonnull List<Component> list, @Nullable Player player) {
+	private Pair<Integer, Integer> getTradeCountAndOutOfStockCount() {
 		int tradeCount = 0;
-		int outOfStock = 0;
+		int outOfStockCount = 0;
 		for(ItemTradeData trade : this.trades)
 		{
 			if(trade.isValid())
 			{
 				tradeCount++;
 				if(!this.isCreative() && !trade.hasStock(this))
-					outOfStock++;
+					outOfStockCount++;
 			}
 		}
-		list.add(LCText.TOOLTIP_NETWORK_TERMINAL_TRADE_COUNT.get(tradeCount));
-		if(outOfStock > 0)
-			list.add(LCText.TOOLTIP_NETWORK_TERMINAL_OUT_OF_STOCK_COUNT.get(outOfStock));
+
+		return Pair.of(tradeCount, outOfStockCount);
 	}
+
+	@Override
+	protected void appendTerminalInfo(@Nonnull List<Component> list, @Nullable Player player) {
+		Pair<Integer, Integer> tradeCountAndOutOfStockCount = getTradeCountAndOutOfStockCount();
+		int tradeCount = tradeCountAndOutOfStockCount.getFirst();
+		int outOfStockCount = tradeCountAndOutOfStockCount.getSecond();
+
+		list.add(EasyText.translatable("tooltip.lightmanscurrency.terminal.info.trade_count", tradeCount));
+		if(outOfStockCount > 0)
+			list.add(EasyText.translatable("tooltip.lightmanscurrency.terminal.info.trade_count.out_of_stock", outOfStockCount));
+	}
+
+	public boolean isTraderEmpty() {
+		Pair<Integer, Integer> tradeCountAndOutOfStockCount = getTradeCountAndOutOfStockCount();
+		int tradeCount = tradeCountAndOutOfStockCount.getFirst();
+		int outOfStockCount = tradeCountAndOutOfStockCount.getSecond();
+
+		if(tradeCount == 0) return true;
+        return tradeCount == outOfStockCount;
+    }
 }
